@@ -153,7 +153,7 @@
                                (print "return ")
                                false)
                              (or ~new-val false))]
-     ~@body))  
+     ~@body))
 
 (def *in-fn-toplevel* true)
 (defn- emit-function-form [form]
@@ -495,7 +495,7 @@
   (print "}")
   (doseq [[clause & body] clauses]
     (case clause
-      'catch (let [[evar expr] body]
+      :catch (let [[evar expr] body]
                (with-block
                  (print " catch (")
                  (emit-symbol evar)
@@ -503,7 +503,7 @@
                  (with-indent [] (emit-statement expr))
                  (newline-indent)
                  (print "}")))
-      'finally (with-block
+      :finally (with-block
                  (print " finally {")
                  (with-indent [] (doseq [expr body] (emit-statement expr)))
                  (newline-indent)
