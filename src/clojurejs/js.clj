@@ -18,20 +18,20 @@
 
 (defn- re? [expr] (= (class expr) java.util.regex.Pattern))
 
-(def *inline-if* false)
-(def *quoted* false)
+(def ^:dynamic *inline-if* false)
+(def ^:dynamic *quoted* false)
 
-(def *print-pretty* false)
+(def ^:dynamic *print-pretty* false)
 (defmacro with-pretty-print [& body]
   `(binding [*print-pretty* true]
      ~@body))
 
-(def *indent* 0)
+(def ^:dynamic *indent* 0)
 (defmacro with-indent [[& increment] & body]
   `(binding [*indent* (+ *indent* (or ~increment 4))]
      ~@body))
 
-(def *in-block-exp* false)
+(def ^:dynamic *in-block-exp* false)
 (defmacro with-block [& body]
   `(binding [*in-block-exp* true]
      ~@body))
@@ -146,7 +146,7 @@
   (with-parens []
     (with-indent [] (emit-delimited ", " args))))
 
-(def *return-expr* false)
+(def ^:dynamic *return-expr* false)
 (defmacro with-return-expr [[& [new-val]] & body]
   `(binding [*return-expr* (if *return-expr*
                              (do
@@ -155,7 +155,7 @@
                              (or ~new-val false))]
      ~@body))
 
-(def *in-fn-toplevel* true)
+(def ^:dynamic *in-fn-toplevel* true)
 (defn- emit-function-form [form]
   (binding [*inline-if* true
             *in-fn-toplevel* false]
@@ -202,7 +202,7 @@
   (binding [*inline-if* true]
     (emit value)))
 
-(def *macros* (ref {}))
+(def ^:dynamic *macros* (ref {}))
 (defn- macro? [n] (and (symbol? n) (contains? @*macros* (name n))))
 (defn- get-macro [n] (and (symbol? n) (get @*macros* (name n))))
 (defn- undef-macro [n]
@@ -236,7 +236,7 @@
 (defn- ignorable-arg? [n]
   (and (symbol? n) (.startsWith (name n) "_")))
 
-(def *temp-sym-count* nil)
+(def ^:dynamic *temp-sym-count* nil)
 (defn tempsym []
   (dosync
    (ref-set *temp-sym-count* (+ 1 @*temp-sym-count*))
@@ -509,7 +509,7 @@
                  (newline-indent)
                  (print "}")))))
 
-(def *loop-vars* nil)
+(def ^:dynamic *loop-vars* nil)
 (defmethod emit "loop" [[_ bindings & body]]
   (let [emit-for-block (fn []
                          (print "for (var ")
@@ -648,7 +648,7 @@ translate the Clojure subset `exprs' to a string of javascript code."
       (js-let ~bindings ~@forms)
       "});"]))
 
-(def *last-sexpr* nil)
+(def ^:dynamic *last-sexpr* nil)
 
 (defn tojs [& scripts]
   "Load and translate the list of cljs scripts into javascript, and

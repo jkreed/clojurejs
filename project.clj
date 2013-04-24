@@ -7,5 +7,4 @@
                      [lein-clojars "0.5.0"]
                      [lein-difftest "1.3.1"]
                      [rhino/js "1.7R2"]]
-  :hooks [leiningen.hooks.difftest]
   :test-path "test")
