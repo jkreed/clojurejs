@@ -4,3 +4,7 @@ pom.xml
 /lib
 .lein-env
 target
+.clj-kondo
+.cpcache
+.lsp
+.nrepl-port
