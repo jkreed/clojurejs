@@ -11,17 +11,17 @@
 ;; remove this notice, or any other, from this software.
 
 (ns clojurejs.test-boot
-  (:use [clojure.test :only [deftest is]]
-        clojurejs.js
-        clojurejs.util.test-rhino
-        clojure.contrib.mock))
+  (:require [clojure.test :refer [deftest is]]
+            clojurejs.js
+            clojurejs.util.test-rhino
+            clojure.contrib.mock))
 
 (def *boot-js* (tojs "src/clojurejs/boot.cljs"))
 
 (deftest variables
   (is (= (js
-           (lvar x 0)
-           (set! x (+ x 1)))
+          (lvar x 0)
+          (set! x (+ x 1)))
          " var x = 0; x = (x + 1);")))
 
 (deftest datastructures
@@ -47,15 +47,15 @@
           (test))))
 
   (is (= [120 120]
-           (js-eval
-            (defn test []
-              (let [p1 1
-                    p2 1]
-                (doseq [[x y] [[1 1] [2 2] [3 3] [4 4] [5 5]]]
-                  (set! p1 (* p1 x)
-                        p2 (* p2 y)))
-                [p1 p2]))
-            (test)))))
+         (js-eval
+          (defn test []
+            (let [p1 1
+                  p2 1]
+              (doseq [[x y] [[1 1] [2 2] [3 3] [4 4] [5 5]]]
+                (set! p1 (* p1 x)
+                      p2 (* p2 y)))
+              [p1 p2]))
+          (test)))))
 
 (deftest dotimes-test
   (is (= 100

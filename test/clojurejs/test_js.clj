@@ -11,10 +11,10 @@
 ;; remove this notice, or any other, from this software.
 
 (ns clojurejs.test-js
-  (:use [clojure.test :only [deftest is]]
-        clojurejs.js
-        clojurejs.util.test-rhino
-        clojure.contrib.mock))
+  (:require [clojure.test :refer [deftest is]]
+            [clojurejs.js :refer [tojs]]
+            [clojurejs.util.test-rhino]
+            [clojure.contrib.mock]))
 
 (tojs "src/clojurejs/boot.cljs")
 
@@ -42,7 +42,7 @@
 
   (is (= (js (fn [a b] (+ a b)))
          "function (a, b) { return (a + b); }"))
-  
+
   (is (= (with-pretty-print (js (fn "Some func does stuff" [x] (+ x 1))))
          "function (x) {\n    /* Some func does stuff */\n    return (x + 1);\n}"))
 
@@ -110,7 +110,7 @@
   ;; :as
   (is (= (js
           (fn [a [b] [c d & e :as f] :as g] nil))
-         "function () { var _temp_1000 = Array.prototype.slice.call(arguments), a = _temp_1000[0], _temp_1001 = _temp_1000[1], b = _temp_1001[0], _temp_1002 = _temp_1000[2], c = _temp_1002[0], d = _temp_1002[1], e = _temp_1002.slice(2), f = _temp_1002, g = _temp_1000; return null; }")) 
+         "function () { var _temp_1000 = Array.prototype.slice.call(arguments), a = _temp_1000[0], _temp_1001 = _temp_1000[1], b = _temp_1001[0], _temp_1002 = _temp_1000[2], c = _temp_1002[0], d = _temp_1002[1], e = _temp_1002.slice(2), f = _temp_1002, g = _temp_1000; return null; }"))
 
   ;; map destructuring
   (is (= (js
@@ -145,9 +145,8 @@
 
   ;; unsupported for now
   (is (thrown-with-msg? Exception #"& must be followed by"
-        (js
-         (fn [x y & {z :z}] z))))
-  )
+                        (js
+                         (fn [x y & {z :z}] z)))))
 
 (deftest loops
   (is (= (js
@@ -165,7 +164,7 @@
           (defn test [a]
             ((if (> a 0) minus plus) a 1)))
          "test = function (a) { return (((a > 0) ? minus : plus))(a,1); }"))
-  
+
   ;; implicit `null` alternate
   (is (= (js (defn test [a] (console.log (if (> a 0) a))))
          "test = function (a) { return console.log(((a > 0) ? a : null)); }")))
@@ -180,9 +179,9 @@
             (try
               (/ 5 0)
               (catch ex
-                  (console.log ex))
+                     (console.log ex))
               (finally
-               0))))
+                0))))
          "test = function () { try { return (5 / 0); } catch (ex) { return console.log(ex); } finally { return 0; }; }"))
 
   (is (= (js (defn test [a] (if (< a 0) (throw (new Error "Negative numbers not accepted")))))
@@ -196,72 +195,72 @@
   (is (= (js
           (defn test [a]
             (cond
-             (symbol? a) "yes"
-             (number? a) "no"
-             :else "don't know")))
+              (symbol? a) "yes"
+              (number? a) "no"
+              :else "don't know")))
          "test = function (a) { if (symbolp(a)) { return \"yes\"; } else { if (numberp(a)) { return \"no\"; } else { return \"don't know\"; }; }; }"))
 
   (is (= (js
           (defn test [a]
             (cond
-             (symbol? a) "yes"
-             (number? a) "no")))
+              (symbol? a) "yes"
+              (number? a) "no")))
          "test = function (a) { if (symbolp(a)) { return \"yes\"; } else { if (numberp(a)) { return \"no\"; }; }; }")))
 
 (declare foo)
 
 (deftest do-expression-test
   (js-import [foo]
-    (expect [foo (->> (times once) (returns 0))]
-      (is (= 123 (js-eval (do (def x (do (foo) 123)) x)))))
-    (expect [foo (->> (times once) (returns 0))]
-      (is (= 123 (js-eval (do (def x -1) (set! x (do (foo) 123)) x)))))))
+             (expect [foo (->> (times once) (returns 0))]
+                     (is (= 123 (js-eval (do (def x (do (foo) 123)) x)))))
+             (expect [foo (->> (times once) (returns 0))]
+                     (is (= 123 (js-eval (do (def x -1) (set! x (do (foo) 123)) x)))))))
 
 (deftest if-expression-test
   (js-import [foo]
-    (expect [foo (times 2)]
-      (is (= 1 (js-eval
-                 (do (if (do (foo) true)
-                       (do (foo) 1)
-                       (do (foo) 2)))))))
-    (expect [foo (times 2)]
-      (is (= 1 (js-eval
-                 (if (do (foo) true)
-                   (do (foo) 1)
-                   (do (foo) 2))))))))
+             (expect [foo (times 2)]
+                     (is (= 1 (js-eval
+                               (do (if (do (foo) true)
+                                     (do (foo) 1)
+                                     (do (foo) 2)))))))
+             (expect [foo (times 2)]
+                     (is (= 1 (js-eval
+                               (if (do (foo) true)
+                                 (do (foo) 1)
+                                 (do (foo) 2))))))))
 
 (deftest loop-expression-test
   (js-import [foo]
-    (expect [foo (times 2)]
-      (is (= -1 (js-eval
-                 (def x (loop [i 1]
-                          (foo)
-                          (if (>= i 0) (recur (- i 2)) i)))
-                 x))))
-    (expect [foo (times 6)]
-      (is (= -1 (js-eval
-                 (loop [i (do (foo) 9)]
-                   (if (> i 0)
-                     (recur (do (foo) (- i 2)))
-                     i))))))
-    (expect [foo (times 6)]
-      (is (= -1 (js-eval
-                 ((fn [] ; create and call anonymous fn
-                    (loop [i (do (foo) 9)] 
-                      (if (> i 0)
-                        (recur (do (foo) (- i 2)))
-                        i))))))))))
+             (expect [foo (times 2)]
+                     (is (= -1 (js-eval
+                                (def x (loop [i 1]
+                                         (foo)
+                                         (if (>= i 0) (recur (- i 2)) i)))
+                                x))))
+             (expect [foo (times 6)]
+                     (is (= -1 (js-eval
+                                (loop [i (do (foo) 9)]
+                                  (if (> i 0)
+                                    (recur (do (foo) (- i 2)))
+                                    i))))))
+             (expect [foo (times 6)]
+                     (is (= -1 (js-eval
+                                ((fn [] ; create and call anonymous fn
+                                   (loop [i (do (foo) 9)]
+                                     (if (> i 0)
+                                       (recur (do (foo) (- i 2)))
+                                       i))))))))))
 
 (deftest let-expression-test
   (js-import [foo]
-    (expect [foo (times 2)]
-      (is (= 123 (js-eval (def x (let [y 123] (foo) y)) x)))
-      (is (= 123 (js-eval (do (def x (let [y 123] (foo) y)) x)))))))
+             (expect [foo (times 2)]
+                     (is (= 123 (js-eval (def x (let [y 123] (foo) y)) x)))
+                     (is (= 123 (js-eval (do (def x (let [y 123] (foo) y)) x)))))))
 
 (deftest new-form-test
   (js-import [foo]
-    (expect [foo (times 5)]
-      (is (= 123 (js-eval (new (do (foo) Number) (do (foo) 123)))))
-      (is (= 123 (js-eval (do (foo) (new (do (foo) Number) (do (foo) 123))))))
-      
-      (is (= (js (Number. 10)) "new Number(10)")))))
+             (expect [foo (times 5)]
+                     (is (= 123 (js-eval (new (do (foo) Number) (do (foo) 123)))))
+                     (is (= 123 (js-eval (do (foo) (new (do (foo) Number) (do (foo) 123))))))
+
+                     (is (= (js (Number. 10)) "new Number(10)")))))

@@ -62,9 +62,9 @@
   "Transforms symbol or keyword into property access form."
   (binding [*quoted* true]
     (emit-str
-      (if (dotsymbol? s)
-        (symbol (subs (name s) 1))
-        s))))
+     (if (dotsymbol? s)
+       (symbol (subs (name s) 1))
+       s))))
 
 (defmulti emit "Emit a javascript expression." {:private true} jskey)
 
@@ -168,13 +168,13 @@
                        (with-parens [] (emit fun))
                        (with-parens [] (emit-delimited "," args)))]
       (cond
-       (unary-operator? fun) (apply emit-unary-operator form)
-       (infix-operator? fun) (apply emit-infix-operator form)
-       (keyword? fun) (let [[map & default] args] (emit `(get ~map ~fun ~@default)))
-       (method? fun) (invoke-method form)
-       (new-object? fun) (emit `(new ~(symbol (apply str (drop-last (str fun)))) ~@args))
-       (coll? fun) (apply invoke-fun form)
-       true (apply emit-function-call form)))))
+        (unary-operator? fun) (apply emit-unary-operator form)
+        (infix-operator? fun) (apply emit-infix-operator form)
+        (keyword? fun) (let [[map & default] args] (emit `(get ~map ~fun ~@default)))
+        (method? fun) (invoke-method form)
+        (new-object? fun) (emit `(new ~(symbol (apply str (drop-last (str fun)))) ~@args))
+        (coll? fun) (apply invoke-fun form)
+        true (apply emit-function-call form)))))
 
 (defn emit-statement [expr]
   (binding [*inline-if* false]
@@ -264,9 +264,9 @@
 (defn- emit-binding [vname val]
   (binding [*inline-if* true]
     (let [emitter (cond
-                   (vector? vname) emit-destructured-seq-binding
-                   (map? vname)    emit-destructured-map-binding
-                   :else           emit-simple-binding)]
+                    (vector? vname) emit-destructured-seq-binding
+                    (map? vname)    emit-destructured-map-binding
+                    :else           emit-simple-binding)]
       (emitter vname val))))
 
 (defn- emit-destructured-seq-binding [vvec val]
@@ -281,19 +281,19 @@
           (condp = vname
             '&  (cond
                   seen-rest?
-                    (throw (Exception. "Unsupported binding form, only :as can follow &"))
+                  (throw (Exception. "Unsupported binding form, only :as can follow &"))
                   (not (symbol? vval))
-                    (throw (Exception. "Unsupported binding form, & must be followed by exactly one symbol"))
+                  (throw (Exception. "Unsupported binding form, & must be followed by exactly one symbol"))
                   :else
-                    (do (emit-binding vval `(.slice ~temp ~i))
-                        (recur (nnext vseq) (inc i) true)))
+                  (do (emit-binding vval `(.slice ~temp ~i))
+                      (recur (nnext vseq) (inc i) true)))
             :as (cond
                   (not= (count (nnext vseq)) 0)
-                    (throw (Exception. "Unsupported binding form, nothing must follow after :as <binding>"))
+                  (throw (Exception. "Unsupported binding form, nothing must follow after :as <binding>"))
                   (not (symbol? vval))
-                    (throw (Exception. "Unsupported binding form, :as must be followed by a symbol"))
+                  (throw (Exception. "Unsupported binding form, :as must be followed by a symbol"))
                   :else
-                    (emit-binding vval temp))
+                  (emit-binding vval temp))
             (do (emit-binding vname `(get ~temp ~i))
                 (recur (next vseq) (inc i) seen-rest?))))))))
 
@@ -301,8 +301,8 @@
   (let [temp     (tempsym)
         defaults (get vmap :or)
         keysmap  (reduce #(assoc %1 %2 (keyword %2))
-                  {}
-                  (mapcat vmap [:keys :strs :syms]))
+                         {}
+                         (mapcat vmap [:keys :strs :syms]))
         vmap     (merge (dissoc vmap :or :keys :strs :syms) keysmap)]
     (print (str temp " = "))
     (emit val)
@@ -311,20 +311,20 @@
       (cond
         (not (and (binding-form? vname)
                   (or (some #(% vkey) #{keyword? number? binding-form?}))))
-          (throw (Exception. "Unsupported binding form, binding symbols must be followed by keywords or numbers"))
+        (throw (Exception. "Unsupported binding form, binding symbols must be followed by keywords or numbers"))
 
         :else
-          (if-let [[_ default] (find defaults vname)]
-            (emit-binding vname `(get ~temp ~vkey ~default))
-            (emit-binding vname `(get ~temp ~vkey)))))))
+        (if-let [[_ default] (find defaults vname)]
+          (emit-binding vname `(get ~temp ~vkey ~default))
+          (emit-binding vname `(get ~temp ~vkey)))))))
 
 (defn- emit-var-bindings [bindings]
   (binding [*return-expr* false]
     (emit-delimited
-      ", "
-      (partition 2 bindings)
-      (fn [[vname val]]
-        (emit-binding vname val)))))
+     ", "
+     (partition 2 bindings)
+     (fn [[vname val]]
+       (emit-binding vname val)))))
 
 (defn- emit-function [fdecl]
   (let [docstring (if (string? (first fdecl))
@@ -339,7 +339,7 @@
                       (some ignorable-arg? args))
         body      (rest fdecl)]
     (assert-args fn
-      (vector? args) "a vector for its bindings")
+                 (vector? args) "a vector for its bindings")
     (if dargs?
       (do
         (print "function () {")
@@ -451,14 +451,14 @@
   (let [[_ map key default]  args
         default? (> (count args) 3)
         emit-get
-          (fn []
-            (emit map)
-            (if (dotsymbol? key)
+        (fn []
+          (emit map)
+          (if (dotsymbol? key)
+            (emit key)
+            (do
+              (print "[")
               (emit key)
-              (do
-                (print "[")
-                (emit key)
-                (print "]"))))]
+              (print "]"))))]
     (with-return-expr []
       (if default?
         ;; FIXME Should be able to re-use code for
@@ -578,17 +578,17 @@
     (emit-macro-expansion expr)
     (with-return-expr []
       (cond
-       (map? expr) (emit-map expr)
-       (set? expr) (emit-set expr)
-       (vector? expr) (emit-vector expr)
-       (re? expr) (emit-re expr)
-       (keyword? expr) (emit-keyword expr)
-       (string? expr) (pr expr)
-       (symbol? expr) (emit-symbol expr)
-       (char? expr) (print (format "'%c'" expr))
-       (and *quoted* (coll? expr)) (emit-vector expr)
-       (coll? expr) (emit-function-form expr)
-       true (print expr)))))
+        (map? expr) (emit-map expr)
+        (set? expr) (emit-set expr)
+        (vector? expr) (emit-vector expr)
+        (re? expr) (emit-re expr)
+        (keyword? expr) (emit-keyword expr)
+        (string? expr) (pr expr)
+        (symbol? expr) (emit-symbol expr)
+        (char? expr) (print (format "'%c'" expr))
+        (and *quoted* (coll? expr)) (emit-vector expr)
+        (coll? expr) (emit-function-form expr)
+        true (print expr)))))
 
 (defn emit-str [expr]
   (binding [*return-expr* false
@@ -596,6 +596,13 @@
     (with-out-str (emit expr))))
 
 (defn js-emit [expr] (emit expr))
+
+(defn js2 [& exprs]
+  (binding [*temp-sym-count* (ref 999)]
+    (with-out-str
+      (if (< 1 (count exprs))
+        (emit-statements exprs)
+        (js-emit (first exprs))))))
 
 (defmacro js [& exprs]
   "Translate the Clojure subset `exprs' to a string of javascript

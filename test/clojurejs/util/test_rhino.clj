@@ -1,11 +1,11 @@
 (ns clojurejs.util.test-rhino
   "Utility functions to help testing clojurejs."
-  (:use [clojurejs.js :only [js]])
+  (:require [clojurejs.js :refer [js]])
   (:import (org.mozilla.javascript Context ScriptableObject NativeArray
                                    NativeObject NativeJavaObject Scriptable)))
 
-(def ^{:private true} *scope* nil)
-(def ^{:private true} *context* nil)
+(def ^{:private true :dynamic true} *scope* nil)
+(def ^{:private true :dynamic true} *context* nil)
 
 (declare wrap-value unwrap-value)
 
@@ -33,8 +33,8 @@
                 *context* ctx]
         (body-fn)))
     (finally
-     (when (Context/getCurrentContext)
-       (Context/exit)))))
+      (when (Context/getCurrentContext)
+        (Context/exit)))))
 
 (defn call-in-new-js-scope
   "Any changes to JavaScript scope done by body-fn will be rolled back upon
@@ -65,40 +65,40 @@
 (defn- unwrap-value
   ([obj] (unwrap-value obj nil))
   ([obj seen]
-     (let [new-seen (conj seen obj)]
-       (when-not (nil? (some #(identical? obj %) seen))
-         (throw
-          (RuntimeException. "Circular reference in unwrapped JS objects.")))
-       (cond
-        (instance? NativeJavaObject obj) (.unwrap obj)
-        (instance? NativeObject obj) (js-object-to-clj-map obj new-seen)
-        (instance? NativeArray obj) (js-array-to-clj-vector obj new-seen)
-        (instance? Scriptable obj)
-          (let [class (.getClassName obj)]
-            (case class
-              "String" (str obj)
-              "RegExp" (if-let [regexp (second (re-find "^/(.*)/$" (str obj)))]
-                         (re-pattern regexp)
-                         obj)
-              "Number" (Double/valueOf (str obj))
-              obj))
-        :else obj))))
+   (let [new-seen (conj seen obj)]
+     (when-not (nil? (some #(identical? obj %) seen))
+       (throw
+        (RuntimeException. "Circular reference in unwrapped JS objects.")))
+     (cond
+       (instance? NativeJavaObject obj) (.unwrap obj)
+       (instance? NativeObject obj) (js-object-to-clj-map obj new-seen)
+       (instance? NativeArray obj) (js-array-to-clj-vector obj new-seen)
+       (instance? Scriptable obj)
+       (let [class (.getClassName obj)]
+         (case class
+           "String" (str obj)
+           "RegExp" (if-let [regexp (second (re-find #"^(.*)$" (str obj)))]
+                      (re-pattern regexp)
+                      obj)
+           "Number" (Double/valueOf (str obj))
+           obj))
+       :else obj))))
 
 (defn- wrap-value [obj]
   (cond
-   (sequential? obj) (.newArray *context* *scope* (to-array obj))
-   (map? obj) (let [jsobj (.newObject *context* *scope*)]
-                (doseq [[k v] obj]
-                  (let [wrapped-key (if (keyword? k) (name k) (wrap-value k))]
-                    (.put jsobj wrapped-key jsobj (wrap-value v))))
-                jsobj)
-   (or (and (instance? Long obj)
-            (<= (Math/abs obj) 0x20000000000000))
-       (instance? Integer obj)
-       (instance? Short obj)
-       (instance? Byte obj)
-       (instance? Float obj)) (double obj)
-   :else (Context/javaToJS obj *scope*)))
+    (sequential? obj) (.newArray *context* *scope* (to-array obj))
+    (map? obj) (let [jsobj (.newObject *context* *scope*)]
+                 (doseq [[k v] obj]
+                   (let [wrapped-key (if (keyword? k) (name k) (wrap-value k))]
+                     (.put jsobj wrapped-key jsobj (wrap-value v))))
+                 jsobj)
+    (or (and (instance? Long obj)
+             (<= (Math/abs obj) 0x20000000000000))
+        (instance? Integer obj)
+        (instance? Short obj)
+        (instance? Byte obj)
+        (instance? Float obj)) (double obj)
+    :else (Context/javaToJS obj *scope*)))
 
 (defn- call-js-fn [name & args]
   (let [js-fn (ScriptableObject/getProperty *scope* name)]
@@ -117,13 +117,13 @@
                               (symbol? s) s)]
                   (ns-resolve ns s)))]
     (cond
-     (string? decl) [decl (reslv decl)]
-     (symbol? decl) [(name decl) (reslv decl)]
-     (sequential? decl) (let [rn (first decl)
-                              name (cond (string? rn) rn
-                                         (symbol? rn) (name rn))
-                              var (reslv (second decl))]
-                          [name var]))))
+      (string? decl) [decl (reslv decl)]
+      (symbol? decl) [(name decl) (reslv decl)]
+      (sequential? decl) (let [rn (first decl)
+                               name (cond (string? rn) rn
+                                          (symbol? rn) (name rn))
+                               var (reslv (second decl))]
+                           [name var]))))
 
 (defmacro js-import
   "imports => [ import-spec* ]
@@ -144,18 +144,18 @@
   "Evaluate JavaScript code."
   ([code] (do-js-eval {} code))
   ([opts code]
-     (call-in-new-js-scope
-      (fn []
-        (try
-          (let [ctx-name "<test-util>"]
-            (if (:preload opts)
-              (.evaluateString *context* *scope* (:preload opts) ctx-name 1 nil))
-            (unwrap-value
-             (.evaluateString *context* *scope* code ctx-name 1 nil)))
-          (catch Exception e
-            (println "JavaScript Code:")
-            (println code)
-            (throw (RuntimeException. "Exception evaluating JavaScript" e))))))))
+   (call-in-new-js-scope
+    (fn []
+      (try
+        (let [ctx-name "<test-util>"]
+          (when (:preload opts)
+            (.evaluateString *context* *scope* (:preload opts) ctx-name 1 nil))
+          (unwrap-value
+           (.evaluateString *context* *scope* code ctx-name 1 nil)))
+        (catch Exception e
+          (println "JavaScript Code:")
+          (println code)
+          (throw (RuntimeException. "Exception evaluating JavaScript" e))))))))
 
 (defmacro js-eval
   "Compiles expressions in body to JavaScript and evaluate the result."

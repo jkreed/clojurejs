@@ -1,3 +1,6 @@
 {:paths ["src"]
  :deps {}
- :aliases {}}
+ :aliases {:dev {:extra-deps {rhino/js {:mvn/version "1.7R2"}
+                              com.github.technomancy/swank-clojure {:mvn/version "1.2.1"}}}
+           :test {:extra-deps {rhino/js {:mvn/version "1.7R2"}}
+                  :extra-paths ["test"]}}}
